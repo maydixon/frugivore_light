@@ -1,0 +1,145 @@
+---
+title: "frugivore_light"
+output: html_notebook
+---
+
+# Questions: 
+Did bats have a preference for the dark side? (light/ lunarphobia)
+ Did habituation have an effect on light phobia?
+ Did light experience in habituation have an effect on light phobia?
+ 
+ - Did they EAT DIFFERENTLY, VISIT DIFFERENTLY, or CALL DIFFERENTLY in any of the conditions? 
+
+
+Secondary questions: 
+  - What were the real light levels on the light and dark side? Was it really lighter on the "light side"
+  - Were preferences stronger when differences in light levels were stronger?
+  - Was there any effect of the moon cycle on choices?
+  
+ - Did bats make more choices overall when they habituated? 
+  
+  
+If any of the pilot trials are not that different, it would be nice to be able to include them. 
+
+
+################
+
+
+# Load packages
+--> Add these packages under packages > install if you don't already have them downloaded
+```{r}
+library(ggplot2)
+library(tidyverse)
+library(readxl)
+
+
+```
+
+
+
+# import data (You can just use the Environment > "import dataset" > "from excel" tool, and choose your second tab )
+```{r}
+C_Data <- read_excel("Carollia Project Data.xlsx", 
+    sheet = "Trial Info", col_types = c("text", 
+        "text", "text", "date", "date", "text", 
+        "text", "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric"))
+
+```
+
+# format and filter data
+```{r}
+
+#remove spaces from column names for convenience
+colnames(C_Data) <- gsub(" ", "_", colnames(C_Data))
+View(C_Data)
+
+#number of rows in data 
+nrow(C_Data)
+
+#remove unused treatment
+C_Data <- C_Data %>%
+      filter(Habituation_Condition != "Dark (2 nights)")  # "!=" means "do not include"
+#you can use this expression to remove other bats you need to exclude
+
+#Make Habituation condition an ordered factor for plotting, currently ordered None, Dark, light
+C_Data <- C_Data %>%
+      mutate(Habituation_Condition = fct_relevel(Habituation_Condition, c("None", "Dark", "Light"))) 
+      
+```
+
+
+# explore data, what is in each of the columns? what type of data is each column? 
+```{r}
+str(C_Data)
+```
+
+# make columns with relative number of vists/ food eaten to the dark side (negative = more dark, positive = more light)
+```{r}
+#columns with dark responses subtracted from light
+
+C_Data <- 
+      C_Data %>%
+      mutate(rel_Dark_eaten = LIGHT_Total_amount_eaten - DARK_Total_amount_eaten, #relative amount eaten
+            rel_Dark_choices = Number_of_choices_at_Light -Number_of_choices_at_Dark, #relative # of visits
+            rel_Dark_calls = `Number_of_calls/visit_LIGHT` - `Number_of_calls/visit_DARK` #relative # of calls (you need ` around this variable bc of the "\")
+            )
+```
+
+
+
+#summary of relative preference in the different conditions
+```{r}
+C_Data %>%
+      group_by(Habituation_Condition) %>%
+      summarize(mean_rel_eaten = mean(rel_Dark_eaten, na.rm= TRUE), mean_rel_choices = mean(rel_Dark_choices, na.rm = TRUE) )
+```
+
+
+# plot: relative preference to light and dark, by condition. 
+y = # visits or amount eaten
+x = treatment (light/ dark/ none)
+```{r}
+# change this to # visits, then subgroup by visits light, visits dark 
+
+# important to know that there are a lot of NAs
+C_Data %>%
+      ggplot(aes(y= rel_Dark_eaten, x = Habituation_Condition, color = Habituation_Condition)) +
+      geom_boxplot() +
+       geom_jitter(alpha=0.5) +
+      ylab("Relative amt eaten (+ = more in light, - = more in dark)") +
+      xlab("Habituation Condition")
+#
+C_Data %>%
+      ggplot(aes(y= rel_Dark_choices, x = Habituation_Condition, color = Habituation_Condition)) +
+      geom_boxplot() +
+      geom_jitter(alpha=0.5) +
+      ylab("Relative number of visits (+ = more to light, - = more to dark)") +
+      xlab("Habituation Condition")
+
+
+C_Data %>%
+      ggplot(aes(y= rel_Dark_calls, x = Habituation_Condition, color = Habituation_Condition)) +
+      geom_boxplot() +
+      geom_jitter(alpha=0.5) +
+      ylab("Relative number of calls (+ = more to light, - = more to dark)") +
+      xlab("Habituation Condition")
+
+```
+
+##############
+Statistical strategies: 
+1) lay out questions
+2) lay out types of variable: response variable, predictor variable(s) (categorical/ continuous/ )
+3) choose possible tests that fit that
+
+
+
+1) Classic: ANOVA
+2) permutation test (permute the treatment labels.  )
+3) general linear model or generalized linear mixed model
+
+
+
